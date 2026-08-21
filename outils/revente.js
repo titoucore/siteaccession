@@ -4,7 +4,12 @@
   let indicesICC = [];
   let indicesSourceIRL = 'aucune'; // 'auto' | 'manuel' | 'aucune'
   let indicesSourceICC = 'aucune';
-  let indicesAutoUpdatedAt = null; // ISO, horodatage de la dernière synchro auto (data/indices.json)
+  let indicesAutoUpdatedAt = null; // ISO, horodatage de la dernière synchro auto (direct INSEE ou data/indices.json)
+  let indicesLiveOK = null; // true = valeurs obtenues en direct depuis l'INSEE à l'instant, false = repli sur data/indices.json, null = pas encore su
+
+  // Séries INSEE utilisées (mêmes idbank que scripts/update-indices.mjs).
+  var SERIES_IRL = '001515333'; // Indice de référence des loyers
+  var SERIES_ICC = '000008630'; // Indice du coût de la construction
 
   // ─── PERSISTANCE ───
   // Seul un import manuel (CSV) est écrit dans localStorage : les valeurs automatiques
@@ -17,11 +22,71 @@
     } catch(e) {}
   }
 
+  // Interroge directement le service public SDMX de l'INSEE depuis le navigateur (même
+  // service que scripts/update-indices.mjs, mais appelé ici en direct, sans passer par
+  // GitHub Actions). Ne fonctionne que si l'INSEE autorise les requêtes cross-origin
+  // (CORS) depuis un navigateur — sinon le fetch échoue et chargerIndices() se replie sur
+  // data/indices.json. Un délai maximum de 8 s évite de bloquer l'affichage si l'INSEE est
+  // lent ou injoignable.
+  function fetchLiveINSEE(idbank) {
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 8000) : null;
+    return fetch('https://bdm.insee.fr/series/sdmx/data/SERIES_BDM/' + idbank, {
+      headers: { Accept: 'application/xml' },
+      signal: ctrl ? ctrl.signal : undefined,
+    }).then(function(res) {
+      if (!res.ok) throw new Error('INSEE a répondu ' + res.status + ' pour la série ' + idbank);
+      return res.text();
+    }).then(function(xml) {
+      var data = parseObservationsSDMX(xml);
+      if (!data.length) throw new Error('Aucune observation exploitable pour la série ' + idbank);
+      return data;
+    }).finally(function() {
+      if (timer) clearTimeout(timer);
+    });
+  }
+
+  // Parseur SDMX-ML « structure specific » : identique à celui de scripts/update-indices.mjs
+  // (regex sur les balises <Obs .../> à plat), pour ne pas dépendre d'une librairie XML.
+  function parseObservationsSDMX(xml) {
+    var obsTagRegex = /<Obs\b([^>]*)\/>/g;
+    var attrRegex = /(\w+)="([^"]*)"/g;
+    var out = [];
+    var obsMatch;
+    while ((obsMatch = obsTagRegex.exec(xml))) {
+      var attrs = {};
+      var attrMatch;
+      attrRegex.lastIndex = 0;
+      while ((attrMatch = attrRegex.exec(obsMatch[1]))) {
+        attrs[attrMatch[1]] = attrMatch[2];
+      }
+      var periode = attrs.TIME_PERIOD;
+      var valeur = parseFloat(attrs.OBS_VALUE);
+      var date = normalizeDateSDMX(attrs.DATE_JO);
+      if (!periode || isNaN(valeur) || !date) continue;
+      out.push({ date: date, periode: periode, valeur: valeur });
+    }
+    out.sort(function(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    return out;
+  }
+
+  function normalizeDateSDMX(raw) {
+    if (!raw) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    var m = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return m[3] + '-' + m[2] + '-' + m[1];
+    return null;
+  }
+
   // Charge les indices avec la priorité suivante :
   //   1. Un import manuel encore en mémoire (localStorage) — reste prioritaire, pour pouvoir
   //      forcer une valeur ponctuellement (litige, correction, valeur non encore publiée...).
-  //   2. À défaut, les valeurs mises à jour automatiquement chaque mois depuis l'INSEE
-  //      (data/indices.json, généré par .github/workflows/update-indices.yml).
+  //   2. À défaut, une interrogation directe de l'INSEE à l'instant (fetchLiveINSEE) — c'est
+  //      la source normale : à chaque ouverture de l'outil, la page va chercher elle-même les
+  //      dernières valeurs, sans action de l'utilisateur.
+  //   3. Si le direct échoue (pas de connexion, CORS refusé par l'INSEE...), repli silencieux
+  //      sur data/indices.json, le fichier partagé mis à jour mensuellement par
+  //      .github/workflows/update-indices.yml — un filet de sécurité, pas la source normale.
   // Asynchrone à cause du fetch — les écrans dépendant des indices se rafraîchissent une
   // fois la réponse arrivée (voir l'appel à majIndicesDepuisDates() en fin de fonction).
   async function chargerIndices() {
@@ -37,22 +102,35 @@
 
     if (indicesSourceIRL !== 'manuel' || indicesSourceICC !== 'manuel') {
       try {
-        const res = await fetch('data/indices.json', { cache: 'no-store' });
-        if (res.ok) {
-          const json = await res.json();
-          if (indicesSourceIRL !== 'manuel' && Array.isArray(json.irl) && json.irl.length) {
-            indicesIRL = json.irl;
-            indicesSourceIRL = 'auto';
-          }
-          if (indicesSourceICC !== 'manuel' && Array.isArray(json.icc) && json.icc.length) {
-            indicesICC = json.icc;
-            indicesSourceICC = 'auto';
-          }
-          indicesAutoUpdatedAt = json.updatedAt || null;
-        }
+        const [irlLive, iccLive] = await Promise.all([
+          fetchLiveINSEE(SERIES_IRL),
+          fetchLiveINSEE(SERIES_ICC),
+        ]);
+        if (indicesSourceIRL !== 'manuel' && irlLive.length) { indicesIRL = irlLive; indicesSourceIRL = 'auto'; }
+        if (indicesSourceICC !== 'manuel' && iccLive.length) { indicesICC = iccLive; indicesSourceICC = 'auto'; }
+        indicesAutoUpdatedAt = new Date().toISOString();
+        indicesLiveOK = true;
       } catch(e) {
-        // Pas de connexion ou fichier absent : on reste avec des tableaux vides, l'import
-        // manuel (CSV) et le message d'état expliquent la situation à l'utilisateur.
+        indicesLiveOK = false;
+        try {
+          const res = await fetch('data/indices.json', { cache: 'no-store' });
+          if (res.ok) {
+            const json = await res.json();
+            if (indicesSourceIRL !== 'manuel' && Array.isArray(json.irl) && json.irl.length) {
+              indicesIRL = json.irl;
+              indicesSourceIRL = 'auto';
+            }
+            if (indicesSourceICC !== 'manuel' && Array.isArray(json.icc) && json.icc.length) {
+              indicesICC = json.icc;
+              indicesSourceICC = 'auto';
+            }
+            indicesAutoUpdatedAt = json.updatedAt || null;
+          }
+        } catch(e2) {
+          // Ni le direct ni le fichier de secours ne sont disponibles : on reste avec des
+          // tableaux vides, l'import manuel (CSV) et le message d'état expliquent la
+          // situation à l'utilisateur.
+        }
       }
     }
 
@@ -301,6 +379,22 @@
         texteStatutIndice(indicesSourceIRL, indicesAutoUpdatedAt, 'o64-irl-updated-at', 'o64-irl-filename');
       document.getElementById('icc-date').textContent =
         texteStatutIndice(indicesSourceICC, indicesAutoUpdatedAt, 'o64-icc-updated-at', 'o64-icc-filename');
+    } catch(e) {}
+    try {
+      var el = document.getElementById('sync-global-date');
+      if (el) {
+        if (indicesAutoUpdatedAt && indicesLiveOK) {
+          el.textContent = '✅ Connecté en direct à l’INSEE — valeurs à jour au '
+            + new Date(indicesAutoUpdatedAt).toLocaleString('fr-FR') + '.';
+        } else if (indicesAutoUpdatedAt) {
+          var perime = estPerime(indicesAutoUpdatedAt);
+          el.textContent = '🔄 Connexion directe à l’INSEE indisponible — valeurs de secours (synchronisation mensuelle) du '
+            + new Date(indicesAutoUpdatedAt).toLocaleString('fr-FR')
+            + (perime ? '. ⚠️ Plus de 4 mois : vérifiez que l’Action GitHub tourne toujours.' : '.');
+        } else {
+          el.textContent = 'Aucune valeur disponible pour l’instant (ni en direct, ni en secours).';
+        }
+      }
     } catch(e) {}
   }
 
@@ -816,8 +910,10 @@
       var dureeRe = /(\d+)\s*(?:ann[eé]es?|ans)\s*(?:suivant|[àa]\s+compter|[àa]\s+partir)/i;
       var dureeM  = txt.match(dureeRe);
       if (dureeM) d.duree_clause = dureeM[1] + ' ans';
-      // Fallback BRS → 99 ans / PSLA → 10 ans si non trouvé
-      if (!d.duree_clause) d.duree_clause = d.dispositif === 'brs' ? '99 ans' : d.dispositif === 'psla' ? '10 ans' : '';
+      // Fallback BRS → 99 ans (durée légale du bail, fixe) uniquement.
+      // Pour PSLA et Accession directe, la durée de la clause varie d'un programme à l'autre
+      // (10, 15 ans...) : pas de valeur par défaut, à détecter dans l'acte ou saisir manuellement.
+      if (!d.duree_clause) d.duree_clause = d.dispositif === 'brs' ? '99 ans' : '';
 
       // ── Exposition globale pour le module courrier ──
       window._o64ActeData = d;
@@ -986,7 +1082,9 @@
     fillIfEmpty('cr_residence',      acte.residence    || '');
     fillIfEmpty('cr_type_logement',  acte.type_logement|| '');
     fillIfEmpty('cr_lots',           acte.lots         || '');
-    fillIfEmpty('cr_duree_clause',   acte.duree_clause || (disp === 'brs' ? '99 ans' : disp === 'psla' ? '10 ans' : ''));
+    // BRS = 99 ans (durée légale fixe). PSLA / Accession directe : pas de défaut, ça varie
+    // selon le programme (10, 15 ans...) — à détecter dans l'acte ou saisir manuellement.
+    fillIfEmpty('cr_duree_clause',   acte.duree_clause || (disp === 'brs' ? '99 ans' : ''));
 
     // Clause : priorité à l'extrait de l'acte (import-clause-txt), sinon texte type
     var clTA = document.getElementById('cr_clause_texte');

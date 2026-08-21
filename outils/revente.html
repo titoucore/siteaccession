@@ -776,9 +776,21 @@
         <span id="indice-count" style="margin-left:auto;font-size:var(--text-xs);background:var(--color-surface-offset);padding:1px 8px;border-radius:var(--radius-full);font-weight:600;color:var(--color-text-muted);">0 valeur(s)</span>
       </div>
       <p style="font-size:var(--text-xs);color:var(--color-text-muted);margin-bottom:var(--space-3);line-height:1.6;">
-        Les indices se mettent à jour automatiquement chaque mois depuis l&apos;INSEE (même valeurs pour tout le monde, rien à faire).
-        L&apos;import CSV ci-dessous reste disponible en secours pour forcer une valeur ponctuellement (litige, correction, valeur pas encore publiée…) — il est alors prioritaire sur la mise à jour automatique, jusqu&apos;à ce que vous cliquiez sur « Effacer la mémoire ».
+        Les indices se synchronisent automatiquement avec l&apos;INSEE à chaque ouverture de cette page — rien à faire.
+        Si la connexion directe est momentanément indisponible, l&apos;outil se rabat sur la dernière valeur connue (mise à jour mensuelle de secours).
+        L&apos;import CSV ci-dessous reste disponible pour forcer une valeur ponctuellement (litige, correction, valeur pas encore publiée…) — il est alors prioritaire, jusqu&apos;à ce que vous cliquiez sur « Effacer la mémoire ».
       </p>
+
+      <!-- Bandeau d'état de la synchronisation : rempli par mettreAJourDatesMaj() dans revente.js
+           une fois que chargerIndices() a tenté la connexion directe à l'INSEE (et, si besoin,
+           son repli sur data/indices.json). Pas de bouton ici : la synchronisation se fait
+           d'elle-même à chaque ouverture de l'outil. -->
+      <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;background:var(--color-surface-offset);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-3);margin-bottom:var(--space-3);">
+        <div style="font-size:var(--text-xs);color:var(--color-text-muted);line-height:1.5;">
+          <strong style="color:var(--color-text);">Indices INSEE</strong><br>
+          <span id="sync-global-date">Synchronisation en cours…</span>
+        </div>
+      </div>
 
       <div style="display:grid;gap:var(--space-3);">
         <div style="background:var(--color-surface-offset);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-3);">
