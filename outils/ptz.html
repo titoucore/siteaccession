@@ -1,0 +1,632 @@
+<style>
+#view-ptz *, #view-ptz *::before, #view-ptz *::after{box-sizing:border-box;margin:0;padding:0}
+#view-ptz{-webkit-font-smoothing:antialiased;scroll-behavior:smooth;scroll-padding-top:1rem}
+#view-ptz{min-height:100dvh;font-family:var(--font-body);font-size:var(--text-base);color:var(--color-text);background:var(--color-bg);line-height:1.6;font-weight:400}
+#view-ptz img, #view-ptz svg{display:block;max-width:100%}
+#view-ptz input, #view-ptz button, #view-ptz select, #view-ptz textarea{font:inherit;color:inherit}
+#view-ptz button{cursor:pointer;background:none;border:none}
+#view-ptz ::selection{background:oklch(from var(--color-primary) l c h/0.25);color:var(--color-text)}
+#view-ptz :focus-visible{outline:2px solid var(--color-primary);outline-offset:3px;border-radius:var(--radius-sm)}
+#view-ptz a, #view-ptz button, #view-ptz [role="button"], #view-ptz input, #view-ptz select{transition:color var(--transition),background var(--transition),border-color var(--transition),box-shadow var(--transition)}
+#view-ptz header{background:var(--color-surface);border-bottom:1px solid var(--color-border);position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm)}
+#view-ptz .header-inner{max-width:1800px;margin:0 auto;padding:var(--space-3) var(--space-6);display:flex;align-items:center;gap:var(--space-4)}
+#view-ptz .logo{display:flex;align-items:center;gap:var(--space-3);text-decoration:none;color:var(--color-text)}
+#view-ptz .logo-img{height:48px;width:auto;flex-shrink:0}
+#view-ptz .logo-divider{width:1px;height:36px;background:var(--color-border)}
+#view-ptz .logo-appname{font-family:var(--font-condensed);font-size:var(--text-lg);font-weight:700;color:var(--color-text);letter-spacing:-0.01em;line-height:1.1}
+#view-ptz .logo-sub{font-size:var(--text-xs);color:var(--color-text-muted);font-weight:400;margin-top:1px}
+#view-ptz .header-badge{margin-left:auto;background:var(--color-primary-highlight);color:var(--color-primary);font-size:var(--text-xs);font-weight:600;padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);white-space:nowrap;font-family:var(--font-condensed)}
+#view-ptz .theme-toggle{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-md);color:var(--color-text-muted);background:var(--color-surface-offset);border:1px solid var(--color-border);flex-shrink:0}
+#view-ptz .theme-toggle:hover{background:var(--color-surface-dynamic);color:var(--color-text)}
+#view-ptz .update-btn{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--color-surface-offset);border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);cursor:pointer;white-space:nowrap}
+#view-ptz .update-btn:hover{border-color:var(--color-primary);color:var(--color-primary);background:var(--color-primary-highlight)}
+#view-ptz .update-btn svg{width:14px;height:14px}
+#view-ptz .update-btn.loading svg{animation:spin 1s linear infinite}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+#view-ptz .update-status{font-size:var(--text-xs);color:var(--color-text-faint);text-align:right}
+#view-ptz .update-status.update-ok{color:var(--color-success)}
+#view-ptz .update-status.update-err{color:var(--color-warning)}
+#view-ptz .ptz-main{max-width:1600px;margin:0 auto;padding:var(--space-6);display:grid;grid-template-columns:minmax(320px, 420px) minmax(0, 1fr);gap:2.25rem;align-items:start}
+@media(max-width:960px){#view-ptz .ptz-main{grid-template-columns:1fr;padding:var(--space-4)}}
+#view-ptz .sidebar{display:flex;flex-direction:column;gap:var(--space-4);position:sticky;top:80px}
+@media(max-width:960px){#view-ptz .sidebar{position:static}}
+#view-ptz .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:var(--space-5);box-shadow:var(--shadow-sm)}
+#view-ptz .card-title{font-family:var(--font-condensed);font-size:var(--text-sm);font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-4);display:flex;align-items:center;gap:var(--space-2)}
+#view-ptz .card-title svg{width:14px;height:14px;color:var(--color-primary)}
+#view-ptz .mode-switch{display:flex;background:var(--color-surface-offset);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:3px;gap:3px;margin-bottom:var(--space-5)}
+#view-ptz .mode-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:calc(var(--radius-lg) - 3px);font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);border:none;background:none;cursor:pointer;transition:all var(--transition);letter-spacing:0.02em}
+#view-ptz .mode-btn.active{background:var(--color-surface);color:var(--color-primary);box-shadow:var(--shadow-sm);border:1px solid var(--color-border)}
+#view-ptz .mode-btn.active.sans-ptz-mode{background:var(--color-surface);color:var(--color-accent-bleu)}
+#view-ptz .mode-btn svg{width:13px;height:13px}
+#view-ptz .form-row{margin-bottom:var(--space-4)}
+#view-ptz .form-row:last-child{margin-bottom:0}
+#view-ptz label{display:block;font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);margin-bottom:var(--space-2);text-transform:uppercase;letter-spacing:0.05em;font-family:var(--font-condensed)}
+#view-ptz .input-wrap{position:relative}
+#view-ptz .input-wrap .unit{position:absolute;right:var(--space-3);top:50%;transform:translateY(-50%);font-size:var(--text-xs);color:var(--color-text-muted);pointer-events:none;font-weight:600}
+#view-ptz input[type="number"], #view-ptz select{width:100%;background:var(--color-surface-offset);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-3);font-size:var(--text-sm);color:var(--color-text);appearance:none;-webkit-appearance:none;font-family:var(--font-body)}
+#view-ptz input[type="number"]:focus, #view-ptz select:focus{border-color:var(--color-primary);outline:none;box-shadow:0 0 0 3px oklch(from var(--color-primary) l c h/0.15)}
+#view-ptz .input-with-unit input{padding-right:2.5rem}
+#view-ptz select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a7a5a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.75rem center;padding-right:2.5rem}
+#view-ptz .radio-group{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}
+#view-ptz .radio-btn{display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-offset);border:1px solid var(--color-border);border-radius:var(--radius-md);cursor:pointer;font-size:var(--text-xs);font-weight:500;color:var(--color-text-muted);transition:all var(--transition);text-align:center;line-height:1.3;font-family:var(--font-body)}
+#view-ptz .radio-btn:hover{border-color:var(--color-primary);color:var(--color-primary)}
+#view-ptz .radio-btn.active{background:var(--color-primary-highlight);border-color:var(--color-primary);color:var(--color-primary);font-weight:600}
+#view-ptz .radio-btn.disabled{opacity:0.4;cursor:not-allowed;pointer-events:none}
+#view-ptz .rfr-calculator{background:var(--color-surface-offset);border:1.5px dashed var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-3)}
+#view-ptz .rfr-calc-title{font-family:var(--font-condensed);font-size:var(--text-xs);font-weight:700;color:var(--color-accent-violet);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-3);display:flex;align-items:center;gap:var(--space-2)}
+#view-ptz .rfr-calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-3)}
+#view-ptz .rfr-calc-field label{color:var(--color-accent-violet);font-size:0.65rem}
+#view-ptz .rfr-calc-field input{background:var(--color-surface);border-color:var(--color-accent-violet-highlight)}
+#view-ptz .rfr-calc-field input:focus{border-color:var(--color-accent-violet)}
+#view-ptz .rfr-calc-result{background:var(--color-accent-violet-highlight);border-radius:var(--radius-md);padding:var(--space-3);display:flex;align-items:center;justify-content:space-between;gap:var(--space-3)}
+#view-ptz .rfr-result-label{font-size:var(--text-xs);color:var(--color-accent-violet);font-weight:600;font-family:var(--font-condensed)}
+#view-ptz .rfr-result-val{font-size:var(--text-sm);font-weight:700;color:var(--color-accent-violet)}
+#view-ptz .rfr-apply-btn{padding:var(--space-2) var(--space-4);background:var(--color-accent-violet);color:white;border-radius:var(--radius-md);font-size:var(--text-xs);font-weight:700;cursor:pointer;border:none;font-family:var(--font-condensed);letter-spacing:0.03em;white-space:nowrap}
+#view-ptz .rfr-apply-btn:hover{background:#7a6aaa}
+#view-ptz .rfr-toggle-btn{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-xs);color:var(--color-accent-violet);background:none;border:none;cursor:pointer;padding:var(--space-1) 0;margin-top:var(--space-2);font-weight:500;font-family:var(--font-body)}
+#view-ptz .rfr-toggle-btn svg{width:12px;height:12px;transition:transform var(--transition)}
+#view-ptz .rfr-toggle-btn.open svg{transform:rotate(180deg)}
+#view-ptz .rfr-calc-note{font-size:var(--text-xs);color:var(--color-text-faint);margin-top:var(--space-2);line-height:1.5}
+#view-ptz .slider-wrap{display:flex;flex-direction:column;gap:var(--space-2)}
+#view-ptz .slider-header{display:flex;justify-content:space-between;align-items:center}
+#view-ptz .slider-value{font-size:var(--text-sm);font-weight:700;color:var(--color-primary);background:var(--color-primary-highlight);padding:2px var(--space-2);border-radius:var(--radius-sm);font-family:var(--font-condensed)}
+#view-ptz input[type="range"]{-webkit-appearance:none;width:100%;height:4px;background:var(--color-surface-dynamic);border-radius:var(--radius-full);outline:none}
+#view-ptz input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--color-primary);border-radius:50%;cursor:pointer;box-shadow:0 0 0 3px oklch(from var(--color-primary) l c h/0.2)}
+#view-ptz input[type="range"]::-moz-range-thumb{width:18px;height:18px;background:var(--color-primary);border:none;border-radius:50%;cursor:pointer}
+#view-ptz .alert-warning{background:var(--color-warning-highlight);border:1px solid var(--color-accent-orange);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);font-size:var(--text-xs);color:var(--color-accent-orange-hover,#d45028)}
+#view-ptz .alert-info{background:var(--color-primary-highlight);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);font-size:var(--text-xs);color:var(--color-text-muted)}
+#view-ptz .hidden{display:none!important}
+#view-ptz .results{display:flex;flex-direction:column;gap:var(--space-4)}
+#view-ptz .mode-indicator{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-radius:var(--radius-xl);font-size:var(--text-xs);font-weight:600;font-family:var(--font-condensed);letter-spacing:0.04em}
+#view-ptz .mode-indicator.ptz-mode{background:var(--color-primary-highlight);color:var(--color-primary);border:1px solid var(--color-border)}
+#view-ptz .mode-indicator.classic-mode{background:var(--color-accent-bleu-highlight);color:var(--color-accent-bleu);border:1px solid var(--color-accent-bleu-highlight)}
+#view-ptz .eligibility-banner{border-radius:var(--radius-xl);padding:var(--space-5);border:2px solid var(--color-success);background:var(--color-success-highlight);display:flex;align-items:center;gap:var(--space-4)}
+#view-ptz .eligibility-banner.ineligible{border-color:var(--color-error);background:var(--color-error-highlight)}
+#view-ptz .eligibility-banner.warning{border-color:var(--color-warning);background:var(--color-warning-highlight)}
+#view-ptz .elig-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--color-success);color:white}
+#view-ptz .eligibility-banner.ineligible .elig-icon{background:var(--color-error)}
+#view-ptz .eligibility-banner.warning .elig-icon{background:var(--color-warning)}
+#view-ptz .elig-title{font-family:var(--font-condensed);font-size:var(--text-base);font-weight:700;color:var(--color-text)}
+#view-ptz .elig-sub{font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1)}
+#view-ptz .metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-3)}
+@media(max-width:700px){#view-ptz .metrics-grid{grid-template-columns:1fr 1fr}}
+#view-ptz .metric-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4);box-shadow:var(--shadow-sm)}
+#view-ptz .metric-label{font-family:var(--font-condensed);font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-2)}
+#view-ptz .metric-value{font-family:var(--font-condensed);font-size:var(--text-xl);font-weight:700;line-height:1;color:var(--color-text)}
+#view-ptz .metric-value.primary{color:var(--color-primary)}
+#view-ptz .metric-value.blue{color:var(--color-blue)}
+#view-ptz .metric-value.gold{color:var(--color-gold)}
+#view-ptz .metric-value.orange{color:var(--color-accent-orange)}
+#view-ptz .metric-sub{font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1)}
+#view-ptz .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
+@media(max-width:700px){#view-ptz .detail-grid{grid-template-columns:1fr}}
+#view-ptz .section-title{font-family:var(--font-condensed);font-size:var(--text-sm);font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-3);display:flex;align-items:center;gap:var(--space-2)}
+#view-ptz .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+#view-ptz .info-table{width:100%;border-collapse:collapse;font-size:var(--text-xs)}
+#view-ptz .info-table td{padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--color-divider);vertical-align:middle}
+#view-ptz .info-table td:first-child{color:var(--color-text-muted);font-weight:500}
+#view-ptz .info-table td:last-child{text-align:right;font-weight:600;color:var(--color-text)}
+#view-ptz .info-table tr.highlight td{background:var(--color-surface-offset);font-weight:700}
+#view-ptz .info-table tr:last-child td{border-bottom:none}
+#view-ptz .tranche-badge{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:700;letter-spacing:0.04em;font-family:var(--font-condensed)}
+#view-ptz .tranche-1{background:var(--color-success-highlight);color:var(--color-success)}
+#view-ptz .tranche-2{background:var(--color-primary-highlight);color:var(--color-primary)}
+#view-ptz .tranche-3{background:var(--color-accent-bleu-highlight);color:var(--color-accent-bleu)}
+#view-ptz .tranche-4{background:var(--color-accent-jaune-highlight);color:var(--color-accent-jaune)}
+#view-ptz .phases-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3)}
+@media(max-width:700px){#view-ptz .phases-grid{grid-template-columns:1fr}}
+#view-ptz .phase-card{border-radius:var(--radius-lg);padding:var(--space-4);border:1px solid var(--color-border)}
+#view-ptz .phase-card.phase1{background:var(--color-surface-offset)}
+#view-ptz .phase-card.phase2{background:color-mix(in oklch,var(--color-accent-bleu-highlight) 30%,var(--color-surface))}
+#view-ptz .phase-card.lissed{background:color-mix(in oklch,var(--color-primary-highlight) 50%,var(--color-surface));border-color:var(--color-primary)}
+#view-ptz .phase-header{font-family:var(--font-condensed);font-size:var(--text-xs);font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:var(--space-2)}
+#view-ptz .phase-amount{font-family:var(--font-condensed);font-size:var(--text-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-3)}
+#view-ptz .phase-breakdown{font-size:var(--text-xs)}
+#view-ptz .phase-line{display:flex;justify-content:space-between;padding:var(--space-1) 0;border-bottom:1px solid var(--color-divider)}
+#view-ptz .phase-line:last-child{border-bottom:none}
+#view-ptz .phase-line strong{font-weight:600;color:var(--color-text)}
+#view-ptz .savings-card{background:linear-gradient(135deg,var(--color-primary) 0%,var(--o64-vert-dark) 100%);border-radius:var(--radius-xl);padding:var(--space-6);color:white}
+#view-ptz .savings-title{font-family:var(--font-condensed);font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.85;margin-bottom:var(--space-2)}
+#view-ptz .savings-amount{font-family:var(--font-condensed);font-size:var(--text-xl);font-weight:700;margin-bottom:var(--space-4)}
+#view-ptz .savings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3)}
+#view-ptz .savings-item{background:rgba(255,255,255,0.15);border-radius:var(--radius-md);padding:var(--space-3)}
+#view-ptz .savings-item-val{font-family:var(--font-condensed);font-size:var(--text-base);font-weight:700}
+#view-ptz .savings-item-lbl{font-size:0.65rem;opacity:0.8;margin-top:2px;text-transform:uppercase;letter-spacing:0.04em}
+#view-ptz .classic-result-card{background:linear-gradient(135deg,var(--color-accent-bleu) 0%,#003d7a 100%);border-radius:var(--radius-xl);padding:var(--space-6);color:white}
+#view-ptz .classic-result-title{font-family:var(--font-condensed);font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.85;margin-bottom:var(--space-2)}
+#view-ptz .classic-result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-top:var(--space-4)}
+#view-ptz .classic-result-item{background:rgba(255,255,255,0.15);border-radius:var(--radius-md);padding:var(--space-3)}
+#view-ptz .classic-result-val{font-family:var(--font-condensed);font-size:var(--text-lg);font-weight:700}
+#view-ptz .classic-result-lbl{font-size:0.65rem;opacity:0.8;margin-top:2px;text-transform:uppercase;letter-spacing:0.04em}
+#view-ptz .taeg-row{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4) var(--space-5);display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow-sm)}
+#view-ptz .taeg-label{font-family:var(--font-condensed);font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted)}
+#view-ptz .taeg-val{font-family:var(--font-condensed);font-size:var(--text-lg);font-weight:700;color:var(--color-text)}
+#view-ptz .taeg-note{font-size:var(--text-xs);color:var(--color-text-muted)}
+#view-ptz .chart-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:var(--space-5);box-shadow:var(--shadow-sm)}
+#view-ptz .chart-wrap{height:120px;margin-top:var(--space-4)}
+#view-ptz .sources-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:var(--space-5);box-shadow:var(--shadow-sm)}
+#view-ptz .sources-header{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap}
+#view-ptz .sources-header-title{font-family:var(--font-condensed);font-size:var(--text-sm);font-weight:700;color:var(--color-text)}
+#view-ptz .last-update-badge{display:inline-flex;align-items:center;gap:4px;font-size:var(--text-xs);font-weight:600;padding:2px var(--space-2);border-radius:var(--radius-full);background:var(--color-success-highlight);color:var(--color-success);margin-left:auto}
+#view-ptz .taux-construction{background:var(--color-surface-offset);border-radius:var(--radius-lg);padding:var(--space-4)}
+#view-ptz .taux-construction-title{font-family:var(--font-condensed);font-size:var(--text-xs);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)}
+#view-ptz .taux-formula{font-size:var(--text-xs);color:var(--color-text-muted);line-height:1.7}
+#view-ptz .taux-formula code{background:var(--color-surface-dynamic);padding:1px 4px;border-radius:3px;font-family:monospace;font-size:0.85em}
+#view-ptz .rates-table{border-collapse:collapse;width:100%;font-size:var(--text-xs)}
+#view-ptz .rates-table th{text-align:left;padding:var(--space-2) var(--space-3);border-bottom:2px solid var(--color-border);color:var(--color-text-muted);font-weight:600;font-family:var(--font-condensed);text-transform:uppercase;letter-spacing:0.04em}
+#view-ptz .rates-table td{padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--color-divider)}
+#view-ptz .rates-table tr.highlight-row td{background:var(--color-primary-highlight);font-weight:600;color:var(--color-primary)}
+#view-ptz .sources-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4)}
+@media(max-width:700px){#view-ptz .sources-grid{grid-template-columns:1fr}}
+#view-ptz .source-item{background:var(--color-surface-offset);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}
+#view-ptz .source-item-label{font-family:var(--font-condensed);font-size:var(--text-xs);font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:var(--space-1)}
+#view-ptz .source-item-value{font-family:var(--font-condensed);font-size:var(--text-base);font-weight:700;color:var(--color-text)}
+#view-ptz .source-item-sub{font-size:0.7rem;color:var(--color-text-faint);margin-top:2px}
+#view-ptz .source-item-link{display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;color:var(--color-primary);margin-top:var(--space-2);text-decoration:none;font-weight:600}
+#view-ptz .source-item-link svg{width:10px;height:10px}
+#view-ptz .source-item-link:hover{text-decoration:underline}
+#view-ptz footer{text-align:center;padding:var(--space-8) var(--space-6);color:var(--color-text-faint);font-size:var(--text-xs);border-top:1px solid var(--color-divider);margin-top:var(--space-8)}
+#view-ptz footer a{color:var(--color-text-muted);text-decoration:none}
+#view-ptz .footer-logo{display:flex;align-items:center;justify-content:center;gap:var(--space-3);margin-bottom:var(--space-3)}
+#view-ptz .footer-logo img{height:44px;opacity:0.85}
+</style>
+<div class="ptz-main">
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar">
+
+    <!-- Mode Switch -->
+    <div class="mode-switch" role="group" aria-label="Mode de simulation">
+      <button class="mode-btn active" id="btn-mode-ptz" onclick="setMode('ptz')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+        Avec PTZ
+      </button>
+      <button class="mode-btn" id="btn-mode-classic" onclick="setMode('classic')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Sans PTZ
+      </button>
+    </div>
+
+    <!-- Profil -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Votre profil
+      </div>
+
+      <div class="form-row">
+        <label for="zone">Zone géographique</label>
+        <select id="zone">
+          <option value="A">Zone A — Côte Basque Sud (Anglet, Biarritz, Bidart, Saint-Jean-de-Luz, Ciboure, Guéthary…)</option>
+          <option value="B1" selected>Zone B1 — Agglo Bayonne &amp; proche côte (Bayonne, Boucau, Pau, Cambo, Saint-Pée-sur-Nivelle, Billère, Lescar, Lons…)</option>
+          <option value="B2">Zone B2 — Intérieur Basque &amp; Béarn (Espelette, Hasparren, Bardos, Saint-Jean-Pied-de-Port, Mauléon, Oloron, Orthez…)</option>
+          <option value="C">Zone C — Rural intérieur (reste du département 64)</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label for="n_personnes">Personnes dans le foyer</label>
+        <select id="n_personnes">
+          <option value="1">1 personne</option>
+          <option value="2" selected>2 personnes</option>
+          <option value="3">3 personnes</option>
+          <option value="4">4 personnes</option>
+          <option value="5">5 personnes</option>
+          <option value="6">6 personnes</option>
+          <option value="7">7 personnes</option>
+          <option value="8">8 personnes ou plus</option>
+        </select>
+      </div>
+
+      <!-- RFR field + calculatrice intégrée -->
+      <div class="form-row">
+        <label for="rfr">Revenu Fiscal de Référence (RFR) — année N-2</label>
+        <div class="input-wrap input-with-unit">
+          <input type="number" id="rfr" value="45000" min="0" max="500000" step="100">
+          <span class="unit">€/an</span>
+        </div>
+        <button class="rfr-toggle-btn" id="rfr-toggle-btn" onclick="toggleRfrCalc()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
+          Calculer le RFR à partir des revenus mensuels
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" id="rfr-chevron"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div id="rfr-calculator" class="rfr-calculator hidden">
+          <div class="rfr-calc-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
+            Calculatrice RFR estimatif
+          </div>
+          <div class="rfr-calc-grid">
+            <div class="rfr-calc-field form-row" style="margin-bottom:0">
+              <label for="rev-mens-net">Revenu net mensuel (€)</label>
+              <div class="input-wrap input-with-unit">
+                <input type="number" id="rev-mens-net" placeholder="ex. 2 800" min="0" max="50000" step="50" oninput="calcRfr()">
+                <span class="unit">€</span>
+              </div>
+            </div>
+            <div class="rfr-calc-field form-row" style="margin-bottom:0">
+              <label for="rev-foyer2">2ème revenu foyer (€)</label>
+              <div class="input-wrap input-with-unit">
+                <input type="number" id="rev-foyer2" placeholder="ex. 2 200" min="0" max="50000" step="50" oninput="calcRfr()">
+                <span class="unit">€</span>
+              </div>
+            </div>
+            <div class="rfr-calc-field form-row" style="margin-bottom:0">
+              <label for="rev-type">Type de revenus</label>
+              <select id="rev-type" onchange="calcRfr()">
+                <option value="salarie">Salarié(s)</option>
+                <option value="independant">Indépendant / TNS</option>
+                <option value="mixte">Mixte</option>
+              </select>
+            </div>
+            <div class="rfr-calc-field form-row" style="margin-bottom:0">
+              <label for="rev-autres">Autres revenus/mois (€)</label>
+              <div class="input-wrap input-with-unit">
+                <input type="number" id="rev-autres" placeholder="loyers, CAF…" min="0" max="20000" step="50" value="0" oninput="calcRfr()">
+                <span class="unit">€</span>
+              </div>
+            </div>
+          </div>
+          <div class="rfr-calc-result">
+            <div>
+              <div class="rfr-result-label">RFR estimé (N-2)</div>
+              <div class="rfr-result-val" id="rfr-estim-val">—</div>
+            </div>
+            <button class="rfr-apply-btn" onclick="applyRfr()">← Appliquer</button>
+          </div>
+          <div class="rfr-calc-note">⚠️ Estimation indicative. Le RFR réel figure sur votre avis d'imposition (case « Revenu fiscal de référence »). Pour les salariés, le RFR ≈ revenus nets × 12 × 0,90 (abattement 10%). Pour les indépendants, le RFR correspond au bénéfice imposable déclaré.</div>
+        </div>
+      </div>
+
+      <!-- Type bien — masqué en mode sans PTZ -->
+      <div id="ptz-only-fields">
+        <div class="form-row">
+          <label>Type d'acquisition</label>
+          <div class="radio-group" id="type_group">
+            <button class="radio-btn active" data-type="collectif">🏢 Neuf collectif</button>
+            <button class="radio-btn" data-type="individuel">🏠 Neuf individuel</button>
+            <button class="radio-btn" data-type="ancien">🔧 Ancien + travaux</button>
+            <div></div>
+          </div>
+          <div id="ancien-alert" class="alert-warning hidden" style="margin-top:var(--space-2)">
+            ⚠️ L'ancien avec travaux est éligible en zones B2 et C uniquement (min. 25% de travaux).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Projet -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Votre projet
+      </div>
+      <div class="form-row">
+        <label for="prix_bien">Montant total de l'acquisition</label>
+        <div class="input-wrap input-with-unit">
+          <input type="number" id="prix_bien" value="220000" min="50000" max="2000000" step="1000">
+          <span class="unit">€</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="apport">Apport personnel</label>
+        <div class="input-wrap input-with-unit">
+          <input type="number" id="apport" value="22000" min="0" max="2000000" step="500">
+          <span class="unit">€</span>
+        </div>
+        <div id="apport-pct" style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-1);text-align:right"></div>
+      </div>
+      <div id="ptz-projet-fields">
+        <div class="form-row">
+          <label for="typologie">Typologie du logement</label>
+          <select id="typologie">
+            <option value="T1">T1 — Studio / 1 pièce</option>
+            <option value="T2">T2 — 2 pièces</option>
+            <option value="T3" selected>T3 — 3 pièces</option>
+            <option value="T4">T4 — 4 pièces</option>
+            <option value="T5">T5 — 5 pièces</option>
+            <option value="T6+">T6 et + — 6 pièces ou plus</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="surface">Surface habitable</label>
+          <select id="surface">
+            <option value="inf30">Moins de 30 m²</option>
+            <option value="30_50">30 – 50 m²</option>
+            <option value="50_70">50 – 70 m²</option>
+            <option value="70_90" selected>70 – 90 m²</option>
+            <option value="90_110">90 – 110 m²</option>
+            <option value="110_130">110 – 130 m²</option>
+            <option value="130_150">130 – 150 m²</option>
+            <option value="sup150">Plus de 150 m²</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paramètres prêt -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        Paramètres du prêt principal
+      </div>
+      <div class="form-row">
+        <label>Durée du prêt principal</label>
+        <div class="slider-wrap">
+          <div class="slider-header">
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted)">10 ans</span>
+            <span class="slider-value" id="duree-val">20 ans</span>
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted)">25 ans</span>
+          </div>
+          <input type="range" id="duree" min="10" max="25" step="1" value="20">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Taux d'intérêt nominal <span id="taux-marche-lbl" style="font-weight:400;font-style:italic;text-transform:none;letter-spacing:0"></span></label>
+        <div class="slider-wrap">
+          <div class="slider-header">
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted)">1,00 %</span>
+            <span class="slider-value" id="taux-val">3,41 %</span>
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted)">6,00 %</span>
+          </div>
+          <input type="range" id="taux" min="1.0" max="6.0" step="0.05" value="3.41">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Taux d'assurance annuel</label>
+        <div class="slider-wrap">
+          <div class="slider-header">
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted)">0,10 %</span>
+            <span class="slider-value" id="assurance-val">0,30 %</span>
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted)">0,60 %</span>
+          </div>
+          <input type="range" id="assurance" min="0.10" max="0.60" step="0.01" value="0.30">
+        </div>
+      </div>
+      <div class="alert-info" style="margin-top:var(--space-2)">
+        📊 Taux marché Pretto (avr. 2026) : <strong>15 ans→3,30%</strong> · <strong>20 ans→3,41%</strong> · <strong>25 ans→3,52%</strong>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ═══ RESULTS ═══ -->
+  <section class="results" id="results-section">
+
+    <!-- Mode indicator -->
+    <div class="mode-indicator ptz-mode" id="mode-indicator">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      <span id="mode-indicator-text">Simulation avec Prêt à Taux Zéro (PTZ)</span>
+    </div>
+
+    <!-- Eligibility banner (PTZ only) -->
+    <div id="elig-banner" class="eligibility-banner">
+      <div class="elig-icon" id="elig-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      </div>
+      <div>
+        <div class="elig-title" id="elig-title">Éligible au PTZ ✓</div>
+        <div class="elig-sub" id="elig-sub">Tranche 3 · Quotité 40% · Différé 2 ans</div>
+      </div>
+      <div style="margin-left:auto;text-align:right" id="ptz-tranche-badge"></div>
+    </div>
+
+    <!-- Key metrics -->
+    <div class="metrics-grid" id="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label" id="lbl-m-ptz">Montant PTZ (0%)</div>
+        <div class="metric-value primary" id="m-ptz">–</div>
+        <div class="metric-sub" id="m-ptz-sub">–</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Prêt bancaire</div>
+        <div class="metric-value blue" id="m-principal">–</div>
+        <div class="metric-sub" id="m-principal-sub">–</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label" id="lbl-m-mensualite">Mensualité lissée</div>
+        <div class="metric-value gold" id="m-mensualite">–</div>
+        <div class="metric-sub" id="sub-m-mensualite">Constante · assurance incluse</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Taux d'endettement</div>
+        <div class="metric-value" id="m-endettement">–</div>
+        <div class="metric-sub">Limite HCSF : 35%</div>
+      </div>
+    </div>
+
+    <!-- PTZ Detail + Principal (PTZ mode) -->
+    <div class="detail-grid" id="detail-ptz-grid">
+      <div class="card">
+        <div class="section-title">
+          <span class="dot" style="background:var(--color-success)"></span>
+          Prêt à Taux Zéro
+        </div>
+        <table class="info-table" id="ptz-table">
+          <tr><td>Tranche de revenus</td><td id="td-tranche">–</td></tr>
+          <tr><td>Typologie du bien</td><td id="td-typologie">–</td></tr>
+          <tr><td>Surface habitable</td><td id="td-surface">–</td></tr>
+          <tr><td>Quotient familial</td><td id="td-quotient">–</td></tr>
+          <tr><td>Plafond d'opération</td><td id="td-plafond-op">–</td></tr>
+          <tr><td>Quotité appliquée</td><td id="td-quotite">–</td></tr>
+          <tr class="highlight"><td>Montant PTZ</td><td id="td-ptz-montant">–</td></tr>
+          <tr><td>Différé de remboursement</td><td id="td-differe">–</td></tr>
+          <tr><td>Durée de remboursement</td><td id="td-duree-ptz">–</td></tr>
+          <tr><td>Mensualité PTZ seule</td><td id="td-mensualite-ptz">–</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <div class="section-title">
+          <span class="dot" style="background:var(--color-blue)"></span>
+          Prêt bancaire principal
+        </div>
+        <table class="info-table" id="principal-table">
+          <tr><td>Montant emprunté</td><td id="td-principal">–</td></tr>
+          <tr><td>Taux nominal</td><td id="td-taux">–</td></tr>
+          <tr><td>Durée choisie</td><td id="td-duree-p">–</td></tr>
+          <tr><td>Taux assurance</td><td id="td-assurance">–</td></tr>
+          <tr class="highlight"><td>Mensualité hors assurance</td><td id="td-mens-p">–</td></tr>
+          <tr><td>Mensualité assurance</td><td id="td-mens-ass">–</td></tr>
+          <tr><td>Coût total intérêts</td><td id="td-interets">–</td></tr>
+          <tr><td>Coût total assurance</td><td id="td-cout-ass">–</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Detail classique (sans PTZ mode) -->
+    <div class="detail-grid hidden" id="detail-classic-grid">
+      <div class="card" style="grid-column:1/-1">
+        <div class="section-title">
+          <span class="dot" style="background:var(--color-accent-bleu)"></span>
+          Prêt bancaire — Simulation sans PTZ
+        </div>
+        <table class="info-table" id="classic-table">
+          <tr><td>Montant à financer</td><td id="ctd-montant">–</td></tr>
+          <tr><td>Taux nominal</td><td id="ctd-taux">–</td></tr>
+          <tr><td>Durée choisie</td><td id="ctd-duree">–</td></tr>
+          <tr><td>Taux assurance</td><td id="ctd-assurance">–</td></tr>
+          <tr class="highlight"><td>Mensualité hors assurance</td><td id="ctd-mens-p">–</td></tr>
+          <tr><td>Mensualité assurance</td><td id="ctd-mens-ass">–</td></tr>
+          <tr class="highlight"><td>Mensualité totale (assurance incluse)</td><td id="ctd-mens-total">–</td></tr>
+          <tr><td>Coût total intérêts</td><td id="ctd-interets">–</td></tr>
+          <tr><td>Coût total assurance</td><td id="ctd-cout-ass">–</td></tr>
+          <tr><td>Coût total crédit</td><td id="ctd-cout-total">–</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Phases (PTZ mode) -->
+    <div class="card" id="phases-card">
+      <div class="section-title">
+        <span class="dot" style="background:var(--color-gold)"></span>
+        Décomposition des mensualités
+      </div>
+      <div class="phases-grid" id="phases-grid">
+        <div class="phase-card phase1" id="phase1-card">
+          <div class="phase-header" id="phase1-title">Phase 1 — Différé PTZ</div>
+          <div class="phase-amount" id="phase1-amount">–</div>
+          <div class="phase-breakdown" id="phase1-breakdown"></div>
+        </div>
+        <div class="phase-card phase2" id="phase2-card">
+          <div class="phase-header" id="phase2-title">Phase 2 — Remboursement PTZ</div>
+          <div class="phase-amount" id="phase2-amount">–</div>
+          <div class="phase-breakdown" id="phase2-breakdown"></div>
+        </div>
+        <div class="phase-card lissed">
+          <div class="phase-header">✨ Mensualité lissée constante</div>
+          <div class="phase-amount" id="lissed-amount">–</div>
+          <div class="phase-breakdown" id="lissed-breakdown"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Savings (PTZ mode) -->
+    <div class="savings-card" id="savings-card">
+      <div class="savings-title">💶 Économies réalisées grâce au PTZ</div>
+      <div class="savings-amount" id="savings-amount">–</div>
+      <div class="savings-grid">
+        <div class="savings-item"><div class="savings-item-val" id="sav-mens">–</div><div class="savings-item-lbl">Économie / mois</div></div>
+        <div class="savings-item"><div class="savings-item-val" id="sav-taux">0%</div><div class="savings-item-lbl">Intérêt PTZ</div></div>
+        <div class="savings-item"><div class="savings-item-val" id="sav-pct">–</div><div class="savings-item-lbl">% du coût total</div></div>
+      </div>
+    </div>
+
+    <!-- Classic savings block (sans PTZ) -->
+    <div class="classic-result-card hidden" id="classic-savings-card">
+      <div class="classic-result-title">📊 Récapitulatif du financement sans PTZ</div>
+      <div class="classic-result-grid">
+        <div class="classic-result-item"><div class="classic-result-val" id="csr-mensualite">–</div><div class="classic-result-lbl">Mensualité totale</div></div>
+        <div class="classic-result-item"><div class="classic-result-val" id="csr-interets">–</div><div class="classic-result-lbl">Coût des intérêts</div></div>
+        <div class="classic-result-item"><div class="classic-result-val" id="csr-cout-total">–</div><div class="classic-result-lbl">Coût total crédit</div></div>
+      </div>
+    </div>
+
+    <!-- TAEG + usure -->
+    <div class="taeg-row" id="taeg-row">
+      <div>
+        <div class="taeg-label">TAEG estimé</div>
+        <div class="taeg-note">Hors frais de dossier et garanties</div>
+      </div>
+      <div style="text-align:right">
+        <div class="taeg-val" id="taeg-val">–</div>
+        <div class="taeg-note" id="taeg-usure">Taux d'usure : 5,19% (1er avril 2026)</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-card">
+      <div class="section-title">
+        <span class="dot" style="background:var(--color-accent-orange)"></span>
+        Répartition du financement total
+      </div>
+      <div class="chart-wrap">
+        <canvas id="finChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Sources -->
+    <div class="sources-card" id="sources-card">
+      <div class="sources-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span class="sources-header-title">Sources & Construction du taux</span>
+        <span class="last-update-badge" id="last-update-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+          <span id="last-update-text">15 avr. 2026</span>
+        </span>
+      </div>
+      <div class="taux-construction">
+        <div class="taux-construction-title">💡 Comment est construit le taux proposé ?</div>
+        <div class="taux-formula">
+          Le <strong>taux nominal</strong> est le taux moyen de marché pour la durée choisie, issu des barèmes <strong>Pretto</strong> (mis à jour mensuellement).<br><br>
+          Construction : <code>Taux marché</code> = interpolation linéaire entre 15, 20 et 25 ans · Données Pretto avril 2026 (15 ans→3,30% · 20 ans→3,41% · 25 ans→3,52%)<br><br>
+          Le <strong>TAEG estimé</strong> inclut taux nominal + assurance emprunteur. Frais de dossier et garanties exclus (variables selon établissements).<br><br>
+          Le <strong>taux d'usure</strong> est fixé trimestriellement par la Banque de France (taux moyen majoré d'un tiers).
+        </div>
+      </div>
+      <div style="margin-top:var(--space-4)">
+        <div style="font-size:var(--text-xs);font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:var(--space-2);font-family:var(--font-condensed)">📊 Taux moyens — <span id="src-date">Avril 2026</span></div>
+        <table class="rates-table">
+          <thead><tr><th>Source</th><th>15 ans</th><th>20 ans</th><th>25 ans</th></tr></thead>
+          <tbody>
+            <tr class="highlight-row"><td>Pretto <span style="font-weight:400;color:var(--color-text-faint)">(simulateur)</span></td><td id="rt-pretto-15">3,30 %</td><td id="rt-pretto-20">3,41 %</td><td id="rt-pretto-25">3,52 %</td></tr>
+            <tr><td>Meilleurtaux (bon taux)</td><td>3,47 %</td><td>3,56 %</td><td>3,65 %</td></tr>
+            <tr><td>Empruntis (moyen)</td><td>3,30 %</td><td>3,40 %</td><td>3,55 %</td></tr>
+            <tr><td>Vousfinancer (moyen)</td><td>3,20 %</td><td>3,40 %</td><td>3,45 %</td></tr>
+            <tr><td>Meilleur taux (excellent)</td><td>2,90 %</td><td>3,05 %</td><td>3,15 %</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sources-grid" style="margin-top:var(--space-4)">
+        <div class="source-item">
+          <div class="source-item-label">🏛️ Taux d'usure — 2e trim. 2026</div>
+          <div class="source-item-value" id="src-usure-20">5,19 % (≥ 20 ans)</div>
+          <div class="source-item-sub" id="src-usure-sub">4,48 % (10–20 ans) · 4,00 % (&lt;10 ans)</div>
+          <a class="source-item-link" href="https://webstat.banque-france.fr/fr/themes/taux-et-cours/taux-de-usure/" target="_blank" rel="noopener">Banque de France <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>
+        </div>
+        <div class="source-item">
+          <div class="source-item-label">📋 Barèmes PTZ</div>
+          <div class="source-item-value">Décret n° 2025-299</div>
+          <div class="source-item-sub">Loi finances 2025 · Art. 90 · Valable jusqu'au 31/12/2027</div>
+          <a class="source-item-link" href="https://www.legifrance.gouv.fr/loda/id/JORFTEXT000051393341" target="_blank" rel="noopener">Légifrance <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>
+        </div>
+        <div class="source-item">
+          <div class="source-item-label">🏠 Conditions PTZ</div>
+          <div class="source-item-value">Primo-accédants</div>
+          <div class="source-item-sub">RFR N-2 · Zones A/B1/B2/C · Neuf + Ancien B2/C</div>
+          <a class="source-item-link" href="https://www.service-public.fr/particuliers/vosdroits/F10871" target="_blank" rel="noopener">Service-public.fr <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</div><!-- /ptz-main -->
+
+<footer>
+  <div class="footer-logo">
+    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj4KICA8cmVjdCB4PSI4IiB5PSI4IiB3aWR0aD0iMTg0IiBoZWlnaHQ9IjE4NCIgcng9IjU4IiByeT0iNTgiIGZpbGw9IiM3Q0I3ODAiLz4KICA8cG9seWdvbiBwb2ludHM9IjEwMCwyOCAxNTgsNzIgNDIsNzIiIGZpbGw9IndoaXRlIi8+CiAgPGNpcmNsZSBjeD0iNzEiIGN5PSI4NyIgcj0iOSIgZmlsbD0id2hpdGUiLz4KICA8cmVjdCB4PSI2NCIgeT0iOTciIHdpZHRoPSIxNCIgaGVpZ2h0PSIyOCIgcng9IjciIGZpbGw9IndoaXRlIi8+CiAgPGNpcmNsZSBjeD0iMTAwIiBjeT0iODIiIHI9IjExIiBmaWxsPSJ3aGl0ZSIvPgogIDxyZWN0IHg9IjkwLjUiIHk9Ijk0IiB3aWR0aD0iMTkiIGhlaWdodD0iMzQiIHJ4PSI5LjUiIGZpbGw9IndoaXRlIi8+CiAgPGNpcmNsZSBjeD0iMTI5IiBjeT0iODciIHI9IjkiIGZpbGw9IndoaXRlIi8+CiAgPHJlY3QgeD0iMTIyIiB5PSI5NyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjI4IiByeD0iNyIgZmlsbD0id2hpdGUiLz4KICA8dGV4dCB4PSIxMDAiIHk9IjE1MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIEJsYWNrLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSI5MDAiIGZvbnQtc2l6ZT0iMjEiIGZpbGw9IndoaXRlIiBsZXR0ZXItc3BhY2luZz0iMSI+T0ZGSUNFIDY0PC90ZXh0PgogIDx0ZXh0IHg9IjEwMCIgeT0iMTcwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjQwMCIgZm9udC1zaXplPSIxMy41IiBmaWxsPSJ3aGl0ZSI+ZGUgbCYjMzk7SGFiaXRhdDwvdGV4dD4KPC9zdmc+" alt="Office 64 de l'Habitat">
+  </div>
+  Simulateur informatif · Barèmes PTZ : décret 2025-299 du 29 mars 2025 · Taux marché : Pretto · Taux d'usure : Banque de France ·
+  <a href="https://www.legifrance.gouv.fr/loda/id/JORFTEXT000051393341" target="_blank" rel="noopener">Légifrance</a> ·
+  <a href="https://www.pretto.fr/taux-immobilier/" target="_blank" rel="noopener">Pretto</a> ·
+  <a href="https://webstat.banque-france.fr/fr/themes/taux-et-cours/taux-de-usure/" target="_blank" rel="noopener">Banque de France</a>
+
+</footer>
