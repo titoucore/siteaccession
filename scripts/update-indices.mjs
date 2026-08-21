@@ -19,15 +19,32 @@ const OUTPUT_PATH = new URL('../data/indices.json', import.meta.url);
 
 async function fetchSeries(idbank) {
   const url = `https://bdm.insee.fr/series/sdmx/data/SERIES_BDM/${idbank}`;
-  const res = await fetch(url, { headers: { Accept: 'application/xml' } });
+  console.log(`→ Appel INSEE pour la série ${idbank}...`);
+  // Un User-Agent explicite est ajouté par précaution : certains services publics
+  // rejettent (403/406) les requêtes dont l'en-tête User-Agent est absent ou trop
+  // générique (ce qui peut être le cas du client HTTP par défaut d'un runner CI).
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: {
+        Accept: 'application/xml',
+        'User-Agent': 'OFFICE64-PortailAccession/1.0 (+https://titoucore.github.io/siteaccession/ ; contact : Office 64 de l\'Habitat)',
+      },
+    });
+  } catch (networkErr) {
+    throw new Error(`Échec réseau en appelant l'INSEE pour la série ${idbank} (${url}) : ${networkErr.message}`);
+  }
   if (!res.ok) {
-    throw new Error(`INSEE a répondu ${res.status} pour la série ${idbank} (${url})`);
+    let corps = '';
+    try { corps = (await res.text()).slice(0, 300); } catch (e) { /* ignore */ }
+    throw new Error(`INSEE a répondu ${res.status} ${res.statusText} pour la série ${idbank} (${url}). Début de la réponse : ${JSON.stringify(corps)}`);
   }
   const xml = await res.text();
   const data = parseObservations(xml);
   if (!data.length) {
-    throw new Error(`Aucune observation exploitable trouvée pour la série ${idbank} — le format de réponse INSEE a peut-être changé.`);
+    throw new Error(`Aucune observation exploitable trouvée pour la série ${idbank} — le format de réponse INSEE a peut-être changé. Début de la réponse : ${JSON.stringify(xml.slice(0, 300))}`);
   }
+  console.log(`✓ Série ${idbank} : ${data.length} observation(s) récupérée(s).`);
   return data;
 }
 
