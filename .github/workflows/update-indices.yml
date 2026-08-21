@@ -1,0 +1,79 @@
+name: Mise à jour des indices INSEE (IRL / ICC)
+
+# Va chercher les dernières valeurs des indices IRL et ICC sur le service public de
+# l'INSEE (gratuit, sans clé d'API) et met à jour data/indices.json, que l'outil
+# « Revente PSLA / BRS » charge automatiquement à chaque ouverture.
+#
+# - Programmé le 2 de chaque mois (laisse le temps aux flux INSEE de se stabiliser
+#   après une publication en tout début de mois).
+# - Peut aussi être lancé manuellement à tout moment depuis l'onglet Actions du
+#   dépôt GitHub (bouton « Run workflow »).
+#
+# Aucun secret à configurer : le service INSEE utilisé est public et ne nécessite
+# aucune authentification.
+
+on:
+  schedule:
+    - cron: '0 6 2 * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-indices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+        with:
+          # Historique complet (pas de clone superficiel) : nécessaire pour pouvoir
+          # rebaser proprement sur origin/main juste avant de pousser, ci-dessous.
+          fetch-depth: 0
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Récupérer les indices IRL/ICC depuis l'INSEE
+        run: node scripts/update-indices.mjs
+
+      - name: Publier data/indices.json si les valeurs ont changé
+        run: |
+          if git diff --quiet -- data/indices.json; then
+            echo "Aucun changement détecté — rien à publier."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/indices.json
+          git commit -m "Mise à jour automatique des indices INSEE (IRL/ICC)"
+
+          # Le dépôt a pu recevoir d'autres commits entre le début de ce job (checkout)
+          # et maintenant — par exemple une modification faite en parallèle via
+          # l'interface web GitHub. Pour éviter un rejet "fetch first" du push, on
+          # rebase notre commit sur la dernière version de main juste avant de pousser,
+          # avec quelques tentatives en cas de nouvelle collision entretemps.
+          tentative_reussie=0
+          for i in 1 2 3; do
+            git fetch origin main
+            if git rebase origin/main; then
+              if git push origin HEAD:main; then
+                echo "Publié avec succès (tentative $i)."
+                tentative_reussie=1
+                break
+              fi
+            else
+              echo "Rebase en conflit sur data/indices.json — abandon, nouvelle tentative."
+              git rebase --abort || true
+            fi
+            echo "Tentative $i échouée, nouvel essai dans 5 s..."
+            sleep 5
+          done
+
+          if [ "$tentative_reussie" != "1" ]; then
+            echo "Échec de la publication après plusieurs tentatives."
+            exit 1
+          fi
