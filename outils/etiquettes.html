@@ -52,7 +52,8 @@
 }
 #view-etiquettes .theme-toggle:hover { color: var(--color-primary); border-color: var(--color-primary-highlight); }
 
-/* MAIN - LAYOUT 3 COLONNES HORIZONTALES */
+/* MAIN - LAYOUT : données en pleine largeur en haut (le tableau a besoin de place),
+   personnalisation + aperçu côte à côte en dessous, dans une deuxième rangée plus courte. */
 #view-etiquettes .main {
   max-width: 1680px;
   margin: 0 auto;
@@ -65,25 +66,16 @@
 }
 #view-etiquettes .columns {
   display: grid;
-  grid-template-columns: minmax(480px, 1.9fr) minmax(300px, 1fr) minmax(320px, 1.1fr);
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
   gap: var(--space-4);
   flex: 1;
-  align-items: start;
   min-height: 0;
 }
-#view-etiquettes .columns .card { height: 100%; }
-
-/* Écrans intermédiaires : données en pleine largeur en haut, personnalisation + aperçu côte à côte en dessous */
-@media (max-width: 1300px) {
-  #view-etiquettes .columns {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto 1fr;
-  }
-  #view-etiquettes .col-data { grid-column: 1 / 3; }
-  #view-etiquettes .col-custom { grid-column: 1 / 2; }
-  #view-etiquettes .col-output { grid-column: 2 / 3; }
-  #view-etiquettes .col-data .card-scroll { max-height: 38vh; }
-}
+#view-etiquettes .col-data { grid-column: 1 / 3; }
+#view-etiquettes .col-custom { grid-column: 1 / 2; }
+#view-etiquettes .col-output { grid-column: 2 / 3; }
+#view-etiquettes .col-data .card-scroll { max-height: 44vh; }
 
 /* Petits écrans : tout empilé, scroll naturel de page */
 @media (max-width: 800px) {
@@ -125,7 +117,9 @@
   flex: 1;
   min-height: 0;
   max-height: calc(100dvh - 260px);
-  padding-right: 2px;
+  /* Marge suffisante sur tous les bords : le halo de sélection des pastilles de couleur
+     (color-swatch.selected) déborde de ~4px et ne doit pas être rogné par ce conteneur. */
+  padding: 6px 6px 6px 2px;
 }
 #view-etiquettes .card-scroll::-webkit-scrollbar { width: 6px; }
 #view-etiquettes .card-scroll::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
@@ -204,16 +198,6 @@
 #view-etiquettes .btn-del-row { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--color-text-faint); background: transparent; }
 #view-etiquettes .btn-del-row:hover { background: var(--color-error-bg); color: var(--color-error); }
 
-/* MANUAL ENTRY FORM */
-#view-etiquettes .manual-form { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3); }
-#view-etiquettes .manual-form-title { font-size: var(--text-sm); font-weight: 700; color: var(--color-primary); margin-bottom: var(--space-3); }
-#view-etiquettes .fr { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-bottom: var(--space-2); }
-#view-etiquettes .fr3 { grid-template-columns: 1fr 1fr 1fr; }
-#view-etiquettes .fg { display: flex; flex-direction: column; gap: 3px; }
-#view-etiquettes .fg label { font-size: 0.68rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
-#view-etiquettes .fg input { border: 1px solid var(--color-border); border-radius: 6px; padding: 6px 8px; font-family: inherit; font-size: var(--text-xs); color: var(--color-text); background: var(--color-surface); }
-#view-etiquettes .fg input:focus { outline: none; border-color: var(--color-primary); }
-
 /* ALERT */
 #view-etiquettes .alert { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); font-size: var(--text-xs); display: flex; gap: var(--space-2); align-items: flex-start; margin-top: var(--space-2); }
 #view-etiquettes .alert-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid rgba(46,125,50,0.2); }
@@ -244,7 +228,7 @@
 #view-etiquettes .align-btn:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
 #view-etiquettes .align-btn.selected { border-color: var(--color-primary); background: var(--color-primary); color: white; }
 
-#view-etiquettes .color-swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-4); }
+#view-etiquettes .color-swatches { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: var(--space-4); padding: 4px 2px; }
 #view-etiquettes .color-swatch {
   width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--color-surface);
   box-shadow: 0 0 0 1px var(--color-border); cursor: pointer; padding: 0; position: relative;
@@ -326,7 +310,6 @@ html[data-theme="dark"] #view-etiquettes .print-alert-banner { background: #2e20
 
 @media (max-width: 600px) {
   #view-etiquettes .main { padding: var(--space-3); }
-  #view-etiquettes .fr, #view-etiquettes .fr3 { grid-template-columns: 1fr; }
   #view-etiquettes .card-scroll { max-height: none; }
 }
 </style>
@@ -355,7 +338,7 @@ html[data-theme="dark"] #view-etiquettes .print-alert-banner { background: #2e20
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Modèle Excel
         </button>
-        <button class="btn btn-outline" onclick="startManualEntry()">
+        <button class="btn btn-outline" id="btn-manual-entry" onclick="startManualEntry()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Saisie manuelle
         </button>
@@ -372,34 +355,6 @@ html[data-theme="dark"] #view-etiquettes .print-alert-banner { background: #2e20
         <div class="dropzone-hint">Formats acceptés : .xlsx, .xls, .csv</div>
       </div>
       <div id="file-alert"></div>
-
-      <div class="manual-form" id="manual-form" style="display:none">
-        <div class="manual-form-title">Ajouter un résident</div>
-        <div id="manual-form-alert"></div>
-        <div class="fr fr3">
-          <div class="fg"><label>N° Logement *</label><input id="mf-appt" placeholder="ex: B103"></div>
-          <div class="fg"><label>Type de logement</label>
-            <select id="mf-type" style="border:1px solid var(--color-border);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:var(--text-xs);color:var(--color-text);background:var(--color-surface);">
-              <option value="appt">Appartement (Appt.)</option>
-              <option value="pavillon">Pavillon (Pav.)</option>
-            </select>
-          </div>
-          <div class="fg"><label>Titre 1</label><input id="mf-titre1" placeholder="M. / Mme"></div>
-        </div>
-        <div class="fr fr3">
-          <div class="fg"><label>Titre 2</label><input id="mf-titre2" placeholder="M. / Mme"></div>
-          <div class="fg"><label>Nom 1 *</label><input id="mf-nom1" placeholder="Nom de famille"></div>
-          <div class="fg"><label>Prénom 1</label><input id="mf-prenom1" placeholder="Prénom"></div>
-        </div>
-        <div class="fr">
-          <div class="fg"><label>Nom 2</label><input id="mf-nom2" placeholder="Nom (2e occupant)"></div>
-          <div class="fg"><label>Prénom 2</label><input id="mf-prenom2" placeholder="Prénom (2e occupant)"></div>
-        </div>
-        <div class="actions-row" style="margin-top:var(--space-2);margin-bottom:0">
-          <button class="btn btn-primary" onclick="submitManualEntry()">Ajouter</button>
-          <button class="btn btn-outline" onclick="cancelManualEntry()">Annuler</button>
-        </div>
-      </div>
 
       <div class="actions-row" id="count-row" style="display:none">
         <span class="count-badge" id="count-badge">0 résidents</span>
@@ -469,14 +424,14 @@ html[data-theme="dark"] #view-etiquettes .print-alert-banner { background: #2e20
         <div class="font-size-row">
           <div class="section-label" style="margin-bottom:6px">Taille police — N° appartement</div>
           <div style="display:flex;align-items:center;gap:var(--space-2);">
-            <input type="range" id="font-size-appt" min="6" max="14" step="0.5" value="9" oninput="onFontSizeChange()">
+            <input type="range" id="font-size-appt" min="7" max="12" step="0.5" value="9" oninput="onFontSizeChange()">
             <span id="font-size-appt-val" style="font-size:var(--text-xs);color:var(--color-text-muted);min-width:32px;">9 pt</span>
           </div>
         </div>
         <div class="font-size-row">
           <div class="section-label" style="margin-bottom:6px">Taille police — Noms</div>
           <div style="display:flex;align-items:center;gap:var(--space-2);">
-            <input type="range" id="font-size-nom" min="7" max="16" step="0.5" value="11" oninput="onFontSizeChange()">
+            <input type="range" id="font-size-nom" min="7" max="14" step="0.5" value="11" oninput="onFontSizeChange()">
             <span id="font-size-nom-val" style="font-size:var(--text-xs);color:var(--color-text-muted);min-width:32px;">11 pt</span>
           </div>
         </div>

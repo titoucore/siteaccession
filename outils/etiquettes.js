@@ -87,8 +87,9 @@ function downloadTemplate() {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
     ['N_LOGEMENT','TYPE','TITRE_1','NOM_1','PRENOM_1','TITRE_2','NOM_2','PRENOM_2'],
-    ['B103','Appartement','Madame','DUPONT','Marie','Monsieur','MARTIN','Pierre'],
-    ['C205','Pavillon','Monsieur','GARCIA','Carlos','','','']
+    ['B103','Appartement','Mme.','DUPONT','Marie','M.','MARTIN','Pierre'],
+    ['C205','Pavillon','M.','GARCIA','Carlos','','',''],
+    ['D310','Appartement','-','LAMBERT','Camille','','','']
   ]);
   ws['!cols'] = [{wch:14},{wch:14},{wch:12},{wch:18},{wch:16},{wch:12},{wch:18},{wch:16}];
   XLSX.utils.book_append_sheet(wb, ws, 'Résidents');
@@ -116,6 +117,16 @@ function pickField(row, keys) {
   return '';
 }
 
+// Ramène toute valeur de titre importée (Madame, M, Mr, Mme, vide, ...) à l'une des 3 valeurs
+// gérées par le menu déroulant du tableau : « M. », « Mme. » ou « - » (non genré / pas de titre).
+function normalizeTitre(raw) {
+  const v = String(raw || '').trim().toLowerCase();
+  if(!v || v === '-') return '-';
+  if(v.startsWith('mme') || v.startsWith('madame')) return 'Mme.';
+  if(v.startsWith('m')) return 'M.'; // couvre m, m., mr, mr., monsieur
+  return '-';
+}
+
 function handleFile(file) {
   if(!file) return;
   const ext = file.name.split('.').pop().toLowerCase();
@@ -136,8 +147,8 @@ function handleFile(file) {
         return {
           appt: pickField(row, ['N_LOGEMENT','N LOGEMENT','NLOGEMENT','LOGEMENT','APT','Logement','N° Logement']),
           type: rawType.startsWith('pav') ? 'pavillon' : 'appt',
-          titre1: pickField(row, ['TITRE_1','TITRE 1','Titre 1','TITRE1']),
-          titre2: pickField(row, ['TITRE_2','TITRE 2','Titre 2','TITRE2']),
+          titre1: normalizeTitre(pickField(row, ['TITRE_1','TITRE 1','Titre 1','TITRE1'])),
+          titre2: normalizeTitre(pickField(row, ['TITRE_2','TITRE 2','Titre 2','TITRE2'])),
           nom1: pickField(row, ['NOM_1','NOM 1','Nom 1','NOM1','NOM']).toUpperCase(),
           prenom1: pickField(row, ['PRENOM_1','PRENOM 1','Prénom 1','PRÉNOM_1','PRENOM1']),
           nom2: pickField(row, ['NOM_2','NOM 2','Nom 2','NOM2']).toUpperCase(),
@@ -172,6 +183,8 @@ function clearFile() {
   document.getElementById('preview-empty-state').style.display = 'block';
   document.getElementById('label-preview-grid').innerHTML = '';
   document.getElementById('count-row').style.display = 'none';
+  const manualBtn = document.getElementById('btn-manual-entry');
+  if(manualBtn) manualBtn.style.display = 'inline-flex';
   document.getElementById('file-alert').innerHTML = '';
   document.getElementById('btn-generate').disabled = true;
   document.getElementById('dropzone').classList.remove('has-file');
@@ -201,85 +214,72 @@ function confirmClearAll() {
 }
 window.confirmClearAll = confirmClearAll; // export global immédiat (requis par onclick/onchange/oninput)
 
-// ===== SAISIE MANUELLE (FORMULAIRE) =====
+// ===== SAISIE MANUELLE (DIRECTEMENT DANS LE TABLEAU) =====
+// Plus de formulaire séparé : « Saisie manuelle » ajoute directement une ligne vide dans le
+// tableau et place le curseur dans sa première case, prête à taper. Une fois qu'il y a au moins
+// un résident, ce bouton s'efface au profit de « + Ligne vide » (même action, pas de doublon).
 function startManualEntry() {
-  document.getElementById('manual-form').style.display = 'block';
-  document.getElementById('mf-appt').focus();
+  addEmptyRow();
 }
 window.startManualEntry = startManualEntry; // export global immédiat (requis par onclick/onchange/oninput)
 
-// Vide les champs du formulaire sans le refermer (utilisé après un ajout réussi,
-// pour enchaîner la saisie de plusieurs résidents sans avoir à rouvrir le formulaire).
-function clearManualFormFields() {
-  ['mf-appt','mf-titre1','mf-titre2','mf-nom1','mf-prenom1','mf-nom2','mf-prenom2'].forEach(id => {
-    document.getElementById(id).value = '';
+function focusNewestRow() {
+  requestAnimationFrame(() => {
+    const cell = document.querySelector('#preview-body tr:last-child .editable-cell');
+    if(!cell) return;
+    cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    cell.focus();
   });
-  document.getElementById('mf-type').value = 'appt';
 }
-
-let manualAlertTimer = null;
-
-function cancelManualEntry() {
-  document.getElementById('manual-form').style.display = 'none';
-  clearManualFormFields();
-  document.getElementById('manual-form-alert').innerHTML = '';
-  clearTimeout(manualAlertTimer);
-}
-window.cancelManualEntry = cancelManualEntry; // export global immédiat (requis par onclick/onchange/oninput)
-
-function submitManualEntry() {
-  const appt = document.getElementById('mf-appt').value.trim();
-  const nom1 = document.getElementById('mf-nom1').value.trim().toUpperCase();
-  if(!appt || !nom1) {
-    showAlert('manual-form-alert', 'error', 'Le n° de logement et le NOM 1 sont obligatoires.');
-    return;
-  }
-  residents.push({
-    appt,
-    type: document.getElementById('mf-type').value,
-    titre1: document.getElementById('mf-titre1').value.trim(),
-    titre2: document.getElementById('mf-titre2').value.trim(),
-    nom1,
-    prenom1: document.getElementById('mf-prenom1').value.trim(),
-    nom2: document.getElementById('mf-nom2').value.trim().toUpperCase(),
-    prenom2: document.getElementById('mf-prenom2').value.trim(),
-  });
-  // Le formulaire reste ouvert et se vide, prêt pour le résident suivant — plus besoin
-  // de le rouvrir à chaque fois quand on saisit toute une résidence à la main.
-  clearManualFormFields();
-  showAlert('manual-form-alert', 'success', 'Logement ' + escHtml(appt) + ' ajouté — vous pouvez enchaîner avec le suivant.');
-  clearTimeout(manualAlertTimer);
-  manualAlertTimer = setTimeout(() => {
-    const el = document.getElementById('manual-form-alert');
-    if(el) el.innerHTML = '';
-  }, 3500);
-  renderPreview();
-  renderLabelPreview();
-  document.getElementById('btn-generate').disabled = false;
-  document.getElementById('mf-appt').focus();
-}
-window.submitManualEntry = submitManualEntry; // export global immédiat (requis par onclick/onchange/oninput)
 
 // ===== PREVIEW TABLE ÉDITABLE =====
 function renderPreview() {
   document.getElementById('empty-state').style.display = residents.length ? 'none' : 'block';
   document.getElementById('preview-section').style.display = residents.length ? 'block' : 'none';
   document.getElementById('count-row').style.display = residents.length ? 'flex' : 'none';
+  // « Saisie manuelle » et « + Ligne vide » font strictement la même chose (ajouter une ligne
+  // vide dans le tableau) : on n'en montre qu'un seul à la fois pour ne pas avoir deux boutons
+  // redondants sous les yeux. Le premier sert à démarrer depuis une liste vide, le second à
+  // enchaîner une fois qu'il y a déjà des résidents.
+  const manualBtn = document.getElementById('btn-manual-entry');
+  if(manualBtn) manualBtn.style.display = residents.length ? 'none' : 'inline-flex';
   updateCount();
   renderTableBody();
+  updateGenerateButtonState();
+}
+
+// Le bouton « Générer le PDF » ne doit être actif que s'il existe au moins un résident
+// exploitable (n° de logement + NOM 1 renseignés) — recalculé à chaque changement des données,
+// que ce soit via import, ajout/suppression de ligne, ou édition directe dans le tableau.
+function updateGenerateButtonState() {
+  document.getElementById('btn-generate').disabled = !residents.some(r => r.appt && r.nom1);
+}
+
+// Options du menu déroulant « Titre » : le tiret « - » signifie explicitement une personne ne
+// souhaitant pas être genrée — dans ce cas, aucun titre n'est affiché devant le nom/prénom.
+const TITRE_OPTIONS = ['M.', 'Mme.', '-'];
+function titreOptionsHtml(selected) {
+  const val = TITRE_OPTIONS.includes(selected) ? selected : '-';
+  return TITRE_OPTIONS.map(t =>
+    '<option value="' + t + '"' + (t === val ? ' selected' : '') + '>' + (t === '-' ? '— (non genré)' : t) + '</option>'
+  ).join('');
 }
 
 function renderTableBody() {
   const body = document.getElementById('preview-body');
-  const FIELDS = ['appt','titre1','prenom1','nom1','titre2','prenom2','nom2'];
   body.innerHTML = residents.map((r, idx) => {
     const typeCell = '<td><select class="editable-cell" onchange="updateResident(' + idx + ',\'type\',this.value)">' +
       '<option value="appt"' + ((r.type||'appt')==='appt' ? ' selected' : '') + '>Appt.</option>' +
       '<option value="pavillon"' + (r.type==='pavillon' ? ' selected' : '') + '>Pav.</option>' +
       '</select></td>';
-    return '<tr><td><input class="editable-cell" value="' + escHtml(r.appt || '') + '" oninput="updateResident(' + idx + ',\'appt\',this.value)"></td>' + typeCell + FIELDS.slice(1).map(f =>
-      '<td><input class="editable-cell" value="' + escHtml(r[f] || '') + '" oninput="updateResident(' + idx + ',\'' + f + '\',this.value)"></td>'
-    ).join('') + '<td><button class="btn-del-row" onclick="deleteRow(' + idx + ')" aria-label="Supprimer la ligne"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></td></tr>';
+    const titreCell = (field) => '<td><select class="editable-cell" onchange="updateResident(' + idx + ',\'' + field + '\',this.value)">' + titreOptionsHtml(r[field]) + '</select></td>';
+    const textCell = (field) => '<td><input class="editable-cell" value="' + escHtml(r[field] || '') + '" oninput="updateResident(' + idx + ',\'' + field + '\',this.value)"></td>';
+    return '<tr>'
+      + '<td><input class="editable-cell" value="' + escHtml(r.appt || '') + '" oninput="updateResident(' + idx + ',\'appt\',this.value)"></td>'
+      + typeCell + titreCell('titre1') + textCell('prenom1') + textCell('nom1')
+      + titreCell('titre2') + textCell('prenom2') + textCell('nom2')
+      + '<td><button class="btn-del-row" onclick="deleteRow(' + idx + ')" aria-label="Supprimer la ligne"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></td>'
+      + '</tr>';
   }).join('');
   updateTableScrollCue();
 }
@@ -311,6 +311,7 @@ function updateResident(idx, field, value) {
   residents[idx][field] = (field === 'nom1' || field === 'nom2') ? value.toUpperCase() : value;
   updateCount();
   renderLabelPreview();
+  updateGenerateButtonState();
 }
 window.updateResident = updateResident; // export global immédiat (requis par onclick/onchange/oninput)
 
@@ -318,14 +319,14 @@ function deleteRow(idx) {
   residents.splice(idx, 1);
   renderPreview();
   renderLabelPreview();
-  if(!residents.length) document.getElementById('btn-generate').disabled = true;
 }
 window.deleteRow = deleteRow; // export global immédiat (requis par onclick/onchange/oninput)
 
 function addEmptyRow() {
-  residents.push({appt:'',type:'appt',titre1:'',titre2:'',nom1:'',prenom1:'',nom2:'',prenom2:''});
+  residents.push({appt:'',type:'appt',titre1:'-',titre2:'-',nom1:'',prenom1:'',nom2:'',prenom2:''});
   renderPreview();
   renderLabelPreview();
+  focusNewestRow();
 }
 window.addEmptyRow = addEmptyRow; // export global immédiat (requis par onclick/onchange/oninput)
 
@@ -365,8 +366,11 @@ function renderLabelPreview() {
 
     const dividerHtml = opts.showDivider ? '<div style="height:1px;width:100%;align-self:stretch;background:' + opts.color + ';opacity:0.45;margin:2px 0;"></div>' : '';
 
-    const p1 = (r.titre1 ? escHtml(r.titre1) + ' ' : '') + (r.prenom1 ? escHtml(r.prenom1) + ' ' : '') + '<strong style="color:' + opts.color + ';font-size:' + nomPx + '">' + escHtml(r.nom1) + '</strong>';
-    const p2 = r.nom2 ? ((r.titre2 ? escHtml(r.titre2) + ' ' : '') + (r.prenom2 ? escHtml(r.prenom2) + ' ' : '') + '<strong style="color:' + opts.color + ';font-size:' + nomPx + '">' + escHtml(r.nom2) + '</strong>') : '';
+    // Ordre d'affichage : Titre, NOM (en gras), Prénom — ex. « M. CORCELLET Thibaut ».
+    // Le titre « - » (non genré) ne s'affiche jamais.
+    const titrePrefix = (t) => (t && t !== '-') ? escHtml(t) + ' ' : '';
+    const p1 = titrePrefix(r.titre1) + '<strong style="color:' + opts.color + ';font-size:' + nomPx + '">' + escHtml(r.nom1) + '</strong>' + (r.prenom1 ? ' ' + escHtml(r.prenom1) : '');
+    const p2 = r.nom2 ? (titrePrefix(r.titre2) + '<strong style="color:' + opts.color + ';font-size:' + nomPx + '">' + escHtml(r.nom2) + '</strong>' + (r.prenom2 ? ' ' + escHtml(r.prenom2) : '')) : '';
 
     label.innerHTML = line1 + dividerHtml + '<div class="label-person" style="font-size:' + personPx + '">' + p1 + '</div>' + (p2 ? '<div class="label-person" style="font-size:' + personPx + '">' + p2 + '</div>' : '');
     grid.appendChild(label);
@@ -448,17 +452,19 @@ function setProgress(pct) {
   document.getElementById('progress-bar').style.width = pct + '%';
 }
 
+// Ordre d'affichage : Titre, NOM (en gras, couleur de marque), Prénom — ex. « M. CORCELLET Thibaut ».
+// Le titre « - » (non genré) ne s'affiche jamais.
 function drawPersonLine(doc, titre, prenom, nom, leftX, centerX, y, align, darkColor, brandColor, fontSizeAppt, fontSizeNom) {
+  titre = (titre && titre !== '-') ? titre : '';
   const fsSmall = fontSizeAppt || 9;
   const fsNom = fontSizeNom || 11;
   doc.setFontSize(fsSmall); doc.setFont('helvetica', 'bold');
   const titreW = titre ? doc.getTextWidth(titre + ' ') : 0;
-  doc.setFont('helvetica', 'normal');
-  const prenomW = prenom ? doc.getTextWidth(prenom) : 0;
   doc.setFontSize(fsNom); doc.setFont('helvetica', 'bold');
-  const nomW = nom ? doc.getTextWidth(nom) : 0;
-  const spacer = (titre || prenom) ? 1.5 : 0;
-  const totalW = titreW + prenomW + spacer + nomW;
+  const nomW = nom ? doc.getTextWidth(nom + (prenom ? ' ' : '')) : 0;
+  doc.setFontSize(fsSmall); doc.setFont('helvetica', 'normal');
+  const prenomW = prenom ? doc.getTextWidth(prenom) : 0;
+  const totalW = titreW + nomW + prenomW;
 
   let cx = align === 'center' ? (centerX - totalW / 2) : leftX;
 
@@ -467,14 +473,15 @@ function drawPersonLine(doc, titre, prenom, nom, leftX, centerX, y, align, darkC
     doc.text(titre + ' ', cx, y);
     cx += titreW;
   }
+  if(nom) {
+    doc.setFontSize(fsNom); doc.setFont('helvetica', 'bold'); doc.setTextColor(...brandColor);
+    doc.text(nom + (prenom ? ' ' : ''), cx, y);
+    cx += nomW;
+  }
   if(prenom) {
     doc.setFontSize(fsSmall); doc.setFont('helvetica', 'normal'); doc.setTextColor(...darkColor);
     doc.text(prenom, cx, y);
-    cx += prenomW;
   }
-  cx += spacer;
-  doc.setFontSize(fsNom); doc.setFont('helvetica', 'bold'); doc.setTextColor(...brandColor);
-  doc.text(nom, cx, y);
 }
 
 async function generatePDF(residents, residenceName) {
